@@ -19,12 +19,19 @@ protocol AlbumPhotosServiceProtocol {
     func getAlbumPhotos(albumId:String, success: @escaping (AlbumsPhotostModel?)->Void, failure: @escaping (Error?)->Void)
     func getAlbumPhotosFromDB() -> Results<AlbumPhotoObject>
     func insertAlbumPhotosToDB(albumPhotos: AlbumsPhotostModel, albumId: Int)
+    func cancelDataTask(albumId: Int)
 }
 
 class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
     
     
     let realm = try! Realm()
+    
+    
+    func cancelDataTask(albumId: Int)
+    {
+        HttpRequestHelper().cancelGetRequest(url: APIList().getUrlString(for: .photos) + "?albumId=\(albumId)")
+    }
     
     func getAlbumsList(success: @escaping (AlbumsListModel?) -> Void, failure: @escaping (Error?) -> Void) {
         HttpRequestHelper().GET(url: APIList().getUrlString(for: .albums), params: ["" : ""], httpHeader: .application_json) { (JSON) in
@@ -39,7 +46,6 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
         } failure: { (error) in
             
         }
-
     }
     
     func getAlbumsListFromDB() -> Results<AlbumObject>
@@ -51,7 +57,7 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
     }
     
     func insertAlbumsListToDB(albums: AlbumsListModel) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             if albums.count > self.getAlbumsListFromDB().count
             {
                 self.realm.beginWrite()
@@ -59,7 +65,7 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
                 try! self.realm.commitWrite()
             }
             debugPrint("///Inserting data to realm db . . .")
-            for album in albums {
+            albums.forEach { album in
                 let albumData = AlbumObject()
                 albumData.id = album.id ?? 0
                 albumData.userId = album.userID ?? 0
@@ -69,7 +75,6 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
                 self.realm.add(albumData)
                 try! self.realm.commitWrite()
             }
-            
         }
     }
     
@@ -94,14 +99,15 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
     func getAlbumPhotosFromDB() -> Results<AlbumPhotoObject>
     {
         let albumPhotoObject = try realm.objects(AlbumPhotoObject.self)
-        debugPrint("album data available in database. albumcount: \(albumPhotoObject.count)")
+//        debugPrint("album photo data available in database. albumcount is \(albumPhotoObject.count)")
         return albumPhotoObject
     }
     
     func insertAlbumPhotosToDB(albumPhotos: AlbumsPhotostModel, albumId: Int) {
         DispatchQueue.main.async {
             let photos = self.getAlbumPhotosFromDB().filter { $0.albumId == albumId}
-            if albumPhotos.count > photos.count
+            debugPrint("album photo data available in database. albumcount is \(photos.count)")
+            if albumPhotos.count >= photos.count
             {
                 self.realm.beginWrite()
                 self.realm.delete(photos)
@@ -109,7 +115,7 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
             }
             debugPrint("///Inserting photos data to realm db . . .")
             var albumPhotoObjects = [AlbumPhotoObject]()
-            for photo in albumPhotos {
+            albumPhotos.forEach { photo in
                 let albumPhoto = AlbumPhotoObject()
                 albumPhoto.id = photo.id ?? 0
                 albumPhoto.title = photo.title ?? ""
@@ -118,9 +124,19 @@ class AlbumService: AlbumsListServiceProtocol, AlbumPhotosServiceProtocol {
                 albumPhoto.albumId = photo.albumID ?? 0
                 albumPhotoObjects.append(albumPhoto)
             }
+//                for photo in albumPhotos {
+//                    let albumPhoto = AlbumPhotoObject()
+//                    albumPhoto.id = photo.id ?? 0
+//                    albumPhoto.title = photo.title ?? ""
+//                    albumPhoto.thumbnail = photo.thumbnailURL ?? ""
+//                    albumPhoto.url = photo.url ?? ""
+//                    albumPhoto.albumId = photo.albumID ?? 0
+//                    albumPhotoObjects.append(albumPhoto)
+//                }
             self.realm.beginWrite()
             self.realm.add(albumPhotoObjects)
             try! self.realm.commitWrite()
+            
         }
     }
 }

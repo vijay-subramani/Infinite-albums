@@ -8,6 +8,7 @@
 import Foundation
 import UIKit
 import RealmSwift
+import SwiftUI
 
 class AlbumListViewModel: NSObject
 {
@@ -66,7 +67,7 @@ class AlbumListViewModel: NSObject
     {
         self.albumList = albums //cache
         var albumData = [AlbumCellViewModel]()
-        for album in albumList {
+        albumList.forEach { album in
             albumData.append(createCellModel(album: album))
         }
         AlbumCellViewModels = albumData
@@ -78,19 +79,16 @@ class AlbumListViewModel: NSObject
         AlbumCellViewModels = []
         
         var albumListData = AlbumsListModel()
-        for album in albums {
+        albums.forEach { album in
             albumListData.append(AlbumsListModelElement.init(userID: album.userId, id: album.id, title: album.title))
         }
         self.albumList = albumListData
         
         var albumData = [AlbumCellViewModel]()
-        for album in albumList {
+        albumList.forEach { album in
             albumData.append(createCellModel(album: album))
         }
-        
         AlbumCellViewModels = albumData
-        self.reloadTableView?()
-        self.reloadCollectionview?()
     }
     
     func createCellModel(album: AlbumsListModelElement?) -> AlbumCellViewModel {
@@ -124,6 +122,11 @@ class AlbumListViewModel: NSObject
 extension AlbumListViewModel
 {
     
+    func cancelGettingPhotoList(albumId: Int)
+    {
+        albumsPhotoService.cancelDataTask(albumId: albumId)
+    }
+    
     func getAlbumsPhotoList(albumId: Int)
     {
         let albumPhotosInDB = albumsPhotoService.getAlbumPhotosFromDB()
@@ -146,7 +149,7 @@ extension AlbumListViewModel
     func fetchAlbumPhotosData(albumPhotos: AlbumsPhotostModel, albumid: Int) {
         self.albumPhotos = albumPhotos
         var photosData = [AlbumsPhotoCellViewModel]()
-        for photo in albumPhotos {
+        albumPhotos.forEach { photo in
             photosData.append(createAlbumPhotoCellModel(albumPhotos: photo))
         }
         AlbumsPhotoCellViewModels = photosData
@@ -155,19 +158,22 @@ extension AlbumListViewModel
     
     func fetchAlbumPhotoDataFromDB(photos: Results<AlbumPhotoObject>, albumId: Int)
     {
-        var albumPhotoData = AlbumsPhotostModel()
-        for photo in photos.filter({ $0.albumId == albumId}) {
-            albumPhotoData.append(AlbumsPhotostModelElement.init(albumID: photo.albumId, id: photo.id, title: photo.title, url: photo.url, thumbnailURL: photo.thumbnail))
-        }
-        self.albumPhotos = albumPhotoData
-        var photoData = [AlbumsPhotoCellViewModel]()
-        for photo in albumPhotos {
-            photoData.append(createAlbumPhotoCellModel(albumPhotos: photo))
-        }
-        AlbumsPhotoCellViewModels = []
-        AlbumsPhotoCellViewModels = photoData
-        self.reloadTableView?()
-        self.reloadCollectionview?()
+        DispatchQueue.background(delay: 0.2, background: nil)
+            { [weak self] in
+                var albumPhotoData = AlbumsPhotostModel()
+                photos.filter({ $0.albumId == albumId}).forEach { photo in
+                    albumPhotoData.append(AlbumsPhotostModelElement.init(albumID: photo.albumId, id: photo.id, title: photo.title, url: photo.url, thumbnailURL: photo.thumbnail))
+                }
+                self?.albumPhotos = albumPhotoData
+                var photoData = [AlbumsPhotoCellViewModel]()
+                
+                self?.albumPhotos.forEach { photo in
+                    photoData.append(self!.createAlbumPhotoCellModel(albumPhotos: photo))
+                }
+                self?.AlbumsPhotoCellViewModels = []
+                self?.AlbumsPhotoCellViewModels = photoData
+            }
+        
     }
 
     

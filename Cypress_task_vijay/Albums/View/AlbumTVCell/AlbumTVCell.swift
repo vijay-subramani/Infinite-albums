@@ -45,6 +45,7 @@ class AlbumTVCell: UITableViewCell {
         albumPhotoCollection.delegate = self
         albumPhotoCollection.dataSource = self
         albumPhotoCollection.layoutIfNeeded()
+        albumPhotoCollection.prefetchDataSource = self
         albumPhotoCollection.allowsSelection = false
         albumPhotoCollection.showsHorizontalScrollIndicator = false
     }
@@ -74,7 +75,7 @@ extension AlbumTVCell: UICollectionViewDelegateFlowLayout {
 }
 
 
-extension AlbumTVCell: UICollectionViewDataSource {
+extension AlbumTVCell: UICollectionViewDataSource, UICollectionViewDataSourcePrefetching {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return viewModel.getAlbumsPhotoCellCount()
     }
@@ -86,5 +87,17 @@ extension AlbumTVCell: UICollectionViewDataSource {
         return cell
     }
     
+    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        indexPaths.forEach { indexpath in
+            let cell = collectionView.dequeueXib(AlbumPhotoCVCell.identifier, indexpath, AlbumPhotoCVCell.self)
+            let cellVM = viewModel.getAlbumsPhotoCellViewModel(at: indexpath)
+            cell.cellViewModel = cellVM
+        }
+    }
     
+    func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
+        indexPaths.forEach { indexpath in
+            viewModel.cancelGettingPhotoList(albumId: self.albumId)
+        }
+    }
 }

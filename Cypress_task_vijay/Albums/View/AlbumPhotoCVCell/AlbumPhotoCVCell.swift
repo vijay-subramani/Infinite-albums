@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import RealmSwift
 
 class AlbumPhotoCVCell: UICollectionViewCell {
 
@@ -14,6 +15,7 @@ class AlbumPhotoCVCell: UICollectionViewCell {
     var cellViewModel: AlbumsPhotoCellViewModel? {
         didSet {
             albumImg.layer.cornerRadius = 10
+            
             ImageLoader().imageLoad(imgView: self.albumImg, url: cellViewModel?.url ?? "")
         }
     }

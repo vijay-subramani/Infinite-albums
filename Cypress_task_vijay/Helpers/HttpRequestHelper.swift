@@ -14,6 +14,8 @@ enum HTTPHeaderFields {
 }
 
 class HttpRequestHelper {
+    var dataTasks : [URLSessionDataTask] = []
+
     func GET(url: String, params: [String: String], httpHeader: HTTPHeaderFields, success: @escaping (Data)->Void, failure: @escaping (Error?)->Void) {
         
         if Reachability.isConnectedToNetwork()
@@ -45,7 +47,7 @@ class HttpRequestHelper {
             // .ephemeral prevent JSON from caching (They'll store in Ram and nothing on Disk)
             let config = URLSessionConfiguration.ephemeral
             let session = URLSession(configuration: config)
-            session.dataTask(with: request) { data, response, error in
+            let dataTask = session.dataTask(with: request) { data, response, error in
                 guard error == nil else {
                     print("Error: problem calling GET")
                     print(error!)
@@ -63,7 +65,9 @@ class HttpRequestHelper {
                     return
                 }
                 success(data)
-            }.resume()
+            }
+            dataTask.resume()
+            dataTasks.append(dataTask)
         }else
         {
             let errorMsg = "No Internet Connection"
@@ -71,5 +75,24 @@ class HttpRequestHelper {
             failure(error)
         }
         
+    }
+    
+    func cancelGetRequest(url: String) {
+      
+      // get the index of the dataTask which load this specific news
+      // if there is no existing data task for the specific news, no need to cancel it
+        guard let dataTaskIndex = dataTasks.firstIndex(where: { task in
+        task.originalRequest?.url == URL(string: url)
+      }) else {
+        return
+      }
+      
+      let dataTask =  dataTasks[dataTaskIndex]
+      
+      // cancel and remove the dataTask from the dataTasks array
+      // so that a new datatask will be created and used to load news next time
+      // since we already cancelled it before it has finished loading
+      dataTask.cancel()
+      dataTasks.remove(at: dataTaskIndex)
     }
 }
